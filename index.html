@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PES 2021 Stat Generator | Pro Scout AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+
+        .stat-bar-bg {
+            background-color: #334155;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .color-excellent { background-color: #10b981; } 
+        .color-great { background-color: #84cc16; }     
+        .color-good { background-color: #f59e0b; }      
+        .color-average { background-color: #ef4444; }   
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+
+        .active-content {
+            max-height: 3000px;
+        }
+
+        .card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+        }
+
+        .loader {
+            border-top-color: #10b981;
+            animation: spinner 0.6s linear infinite;
+        }
+
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- SEARCH & INPUT SECTION -->
+        <section class="card p-6 rounded-xl mb-8 border-t-4 border-blue-500 shadow-xl">
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-blue-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                PES 2021 Performance Analytics (2025/26)
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input id="playerName" type="text" placeholder="Player Name" class="bg-slate-800 border border-slate-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <input id="playerClub" type="text" placeholder="Club Name" class="bg-slate-800 border border-slate-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <button onclick="generatePlayerStats()" id="genBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 active:scale-95">
+                    <span>Generate Attributes</span>
+                </button>
+            </div>
+            <div id="loadingIndicator" class="hidden mt-4 flex items-center gap-3 text-blue-400 text-sm italic">
+                <div class="loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></div>
+                Analyzing 2025/26 form and generating Build A, B, C...
+            </div>
+        </section>
+
+        <!-- HEADER -->
+        <header id="playerHeader" class="card border-l-4 border-emerald-500 p-6 rounded-xl mb-8 shadow-2xl">
+            <div class="flex justify-between items-end">
+                <div>
+                    <h1 id="display-name" class="text-4xl font-extrabold tracking-tight uppercase">VIKTOR GYÖKERES</h1>
+                    <p id="display-sub" class="text-emerald-400 font-semibold text-lg">Sporting CP | Center Forward</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-slate-400 text-sm uppercase tracking-widest">Season</p>
+                    <p class="text-2xl font-bold">2025 / 26</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- POSITION SYSTEM -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="card p-4 rounded-lg text-center border-t-4 border-emerald-500">
+                <p class="text-xs text-slate-400 uppercase">Main Position</p>
+                <p id="pos-main" class="text-xl font-bold">CF</p>
+            </div>
+            <div class="card p-4 rounded-lg text-center">
+                <p class="text-xs text-slate-400 uppercase">Rank A</p>
+                <p id="pos-a" class="text-xl font-bold">LWF</p>
+            </div>
+            <div class="card p-4 rounded-lg text-center">
+                <p class="text-xs text-slate-400 uppercase">Rank B</p>
+                <p id="pos-b" class="text-xl font-bold">RWF, SS</p>
+            </div>
+        </div>
+
+        <!-- FINAL ATTRIBUTES GRID -->
+        <section class="card p-6 rounded-xl mb-8">
+            <h2 class="text-xl font-bold mb-6 border-b border-slate-700 pb-2">Final Averaged Attributes</h2>
+            <div id="statsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                <!-- Data dynamically injected -->
+            </div>
+        </section>
+
+        <!-- COLLAPSIBLE CALCULATION BREAKDOWN -->
+        <section class="mb-8">
+            <button onclick="toggleCalculations()" class="w-full card p-4 rounded-xl flex justify-between items-center hover:bg-slate-800 transition-colors border-b-2 border-slate-700">
+                <span class="font-bold flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Calculation Breakdown (Build A, B, C)
+                </span>
+                <span id="chevron" class="text-slate-400 transition-transform">▼</span>
+            </button>
+            <div id="calc-content" class="collapsible-content">
+                <div id="buildsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <!-- Builds injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- PLAYER ANALYSIS -->
+        <section class="card p-6 rounded-xl border-l-4 border-blue-500">
+            <h2 class="text-xl font-bold mb-4 border-b border-slate-700 pb-2">Scout Analysis Summary</h2>
+            <p id="analysis-text" class="text-slate-300 leading-relaxed italic">
+                Input player details to generate an elite 2025/26 performance report.
+            </p>
+        </section>
+    </div>
+
+    <script>
+        const apiKey = ""; 
+
+        // Full Attribute Order Template
+        const statTemplate = [
+            { id: 'oa', label: 'Offensive Awareness' },
+            { id: 'bc', label: 'Ball Control' },
+            { id: 'dr', label: 'Dribbling' },
+            { id: 'tp', label: 'Tight Possession' },
+            { id: 'lp', label: 'Low Pass' },
+            { id: 'lop', label: 'Lofted Pass' },
+            { id: 'fi', label: 'Finishing' },
+            { id: 'he', label: 'Heading' },
+            { id: 'pk', label: 'Place Kicking' },
+            { id: 'cu', label: 'Curl' },
+            { id: 'sp', label: 'Speed' },
+            { id: 'ac', label: 'Acceleration' },
+            { id: 'kp', label: 'Kicking Power' },
+            { id: 'ju', label: 'Jump' },
+            { id: 'pc', label: 'Physical Contact' },
+            { id: 'ba', label: 'Balance' },
+            { id: 'st', label: 'Stamina' },
+            { id: 'da', label: 'Defensive Awareness' },
+            { id: 'bw', label: 'Ball Winning' },
+            { id: 'ag', label: 'Aggression' },
+            { id: 'gka', label: 'GK Awareness' },
+            { id: 'gkc', label: 'GK Catching' },
+            { id: 'gkl', label: 'GK Clearing' },
+            { id: 'gkr', label: 'GK Reflexes' },
+            { id: 'gkre', label: 'GK Reach' },
+            { id: 'wfu', label: 'Weak Foot Usage' },
+            { id: 'wfa', label: 'Weak Foot Acc.' },
+            { id: 'form', label: 'Form' },
+            { id: 'inj', label: 'Injury Resistance' }
+        ];
+
+        function getStatColor(val, id) {
+            // Logic for usage stats (1-8 scale)
+            if (['wfu', 'wfa', 'inj'].includes(id)) return val >= 3 ? 'color-excellent' : 'color-average';
+            if (id === 'form') return val >= 6 ? 'color-excellent' : 'color-good';
+            
+            // Standard 40-99 scale
+            if (val >= 90) return 'color-excellent';
+            if (val >= 80) return 'color-great';
+            if (val >= 75) return 'color-good';
+            return 'color-average';
+        }
+
+        function renderStats(stats) {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = '';
+            
+            const half = Math.ceil(stats.length / 2);
+            const cols = [stats.slice(0, half), stats.slice(half)];
+
+            cols.forEach(col => {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'space-y-4';
+                col.forEach(s => {
+                    const isScaled = ['wfu', 'wfa', 'form', 'inj'].includes(s.id);
+                    const widthPercent = isScaled ? (s.val / 8) * 100 : s.val;
+                    
+                    const row = `
+                        <div>
+                            <div class="flex justify-between mb-1 text-sm">
+                                <span>${s.label}</span>
+                                <span class="font-bold ${s.val >= 80 ? 'text-emerald-400' : 'text-slate-300'}">${s.val}</span>
+                            </div>
+                            <div class="stat-bar-bg">
+                                <div class="stat-bar-fill ${getStatColor(s.val, s.id)}" style="width: ${widthPercent}%"></div>
+                            </div>
+                        </div>
+                    `;
+                    colDiv.innerHTML += row;
+                });
+                container.appendChild(colDiv);
+            });
+        }
+
+        async function generatePlayerStats() {
+            const name = document.getElementById('playerName').value.trim();
+            const club = document.getElementById('playerClub').value.trim();
+            
+            if (!name || !club) {
+                alert("Please provide both Player Name and Club.");
+                return;
+            }
+
+            const btn = document.getElementById('genBtn');
+            const loader = document.getElementById('loadingIndicator');
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            loader.classList.remove('hidden');
+
+            const systemPrompt = `You are an elite football performance analyst. Generate 3-pass attribute sets for PES 2021 (2025/26 form).
+            1. Build A: Data-Driven stats.
+            2. Build B: Eye-test & Playstyle.
+            3. Build C: Tactical Role.
+            Final averaged values must be ROUND((A+B+C)/3). 
+            Output MUST be JSON. 
+            Include stats for ALL 29 attributes: oa, bc, dr, tp, lp, lop, fi, he, pk, cu, sp, ac, kp, ju, pc, ba, st, da, bw, ag, gka, gkc, gkl, gkr, gkre, wfu (1-4), wfa (1-4), form (1-8), inj (1-3).`;
+
+            const userQuery = `Analyze ${name} (${club}) for the 2025/26 season. Output exact attribute values for Build A, B, C and the final average. Provide detailed positions and analysis.`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    finalStats: { type: "ARRAY", items: { type: "OBJECT", properties: { id: { type: "STRING" }, val: { type: "NUMBER" } } } },
+                                    positions: { type: "OBJECT", properties: { main: { type: "STRING" }, rankA: { type: "STRING" }, rankB: { type: "STRING" } } },
+                                    builds: { 
+                                        type: "ARRAY", 
+                                        items: { 
+                                            type: "OBJECT", 
+                                            properties: { 
+                                                type: { type: "STRING" }, 
+                                                desc: { type: "STRING" },
+                                                highlights: { type: "ARRAY", items: { type: "OBJECT", properties: { label: { type: "STRING" }, val: { type: "NUMBER" } } } } 
+                                            } 
+                                        } 
+                                    },
+                                    analysis: { type: "STRING" }
+                                }
+                            }
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                const parsed = JSON.parse(result.candidates[0].content.parts[0].text);
+                updateUI(parsed, name, club);
+            } catch (err) {
+                console.error(err);
+                alert("Failed to analyze player. Try again.");
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+                loader.classList.add('hidden');
+            }
+        }
+
+        function updateUI(data, name, club) {
+            // 1. Header
+            document.getElementById('display-name').innerText = name;
+            document.getElementById('display-sub').innerText = `${club} | ${data.positions.main}`;
+            
+            // 2. Positions
+            document.getElementById('pos-main').innerText = data.positions.main;
+            document.getElementById('pos-a').innerText = data.positions.rankA;
+            document.getElementById('pos-b').innerText = data.positions.rankB;
+
+            // 3. Final Stats
+            const merged = statTemplate.map(t => {
+                const entry = data.finalStats.find(fs => fs.id === t.id);
+                return { ...t, val: entry ? entry.val : 40 };
+            });
+            renderStats(merged);
+
+            // 4. Breakdown
+            const grid = document.getElementById('buildsGrid');
+            grid.innerHTML = '';
+            data.builds.forEach((b, i) => {
+                const colors = ['text-blue-400', 'text-purple-400', 'text-emerald-400'];
+                grid.innerHTML += `
+                    <div class="card p-4 rounded-lg text-xs">
+                        <p class="font-bold uppercase ${colors[i]} mb-2 border-b border-slate-700 pb-1">${b.type}</p>
+                        <div class="space-y-1 mb-2">
+                            ${b.highlights.map(h => `<div class="flex justify-between"><span>${h.label}</span><span class="font-bold">${h.val}</span></div>`).join('')}
+                        </div>
+                        <p class="text-slate-500 italic">${b.desc}</p>
+                    </div>
+                `;
+            });
+
+            // 5. Analysis
+            document.getElementById('analysis-text').innerText = data.analysis;
+            
+            // Scroll to top of results
+            document.getElementById('playerHeader').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function toggleCalculations() {
+            const content = document.getElementById('calc-content');
+            const chevron = document.getElementById('chevron');
+            content.classList.toggle('active-content');
+            chevron.style.transform = content.classList.contains('active-content') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        // Init
+        window.onload = () => {
+            renderStats(statTemplate.map(t => ({...t, val: 0})));
+        };
+    </script>
+</body>
+</html>
